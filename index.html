@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Demo Trade — торговый симулятор</title>
+  <style>
+    :root{--bg:#09111f;--panel:#111d2e;--panel2:#17243a;--line:#26374f;--text:#edf4ff;--muted:#91a2b8;--green:#22c55e;--red:#ef4444;--blue:#3b82f6}
+    *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui,sans-serif} button,input,select{font:inherit}
+    .app{min-height:100vh;display:grid;grid-template-columns:220px minmax(360px,1fr) 300px}.sidebar,.trade-panel{background:var(--panel);border-right:1px solid var(--line);padding:18px}.trade-panel{border-right:0;border-left:1px solid var(--line)}
+    .logo{font-weight:800;font-size:20px;margin-bottom:22px}.logo span{color:var(--blue)}.demo-badge{display:inline-block;margin-left:6px;padding:3px 7px;border-radius:99px;background:#1d3b68;color:#91bfff;font-size:11px}.market{width:100%;display:flex;justify-content:space-between;align-items:center;border:0;border-bottom:1px solid var(--line);background:transparent;color:var(--text);padding:13px 8px;cursor:pointer}.market.active{background:var(--panel2);border-radius:8px}.market small{display:block;color:var(--muted);margin-top:3px}.up{color:var(--green)}.down{color:var(--red)}
+    main{min-width:0}.topbar{height:76px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content-between;padding:0 20px}.pair{font-size:20px;font-weight:800}.pair-price{margin-left:12px;font-family:ui-monospace,monospace}.chart-wrap{height:430px;padding:14px}canvas{width:100%;height:100%;display:block}
+    .stats{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--line)}.stat{padding:13px 20px;border-right:1px solid var(--line)}.stat:last-child{border-right:0}.stat label{display:block;color:var(--muted);font-size:12px;margin-bottom:5px}.stat b{font-family:ui-monospace,monospace}
+    .tabs{display:grid;grid-template-columns:1fr 1fr;background:var(--panel2);border-radius:8px;padding:4px;margin-bottom:16px}.tabs button{border:0;border-radius:6px;padding:9px;color:var(--muted);background:transparent;cursor:pointer}.tabs button.active.buy{background:var(--green);color:white}.tabs button.active.sell{background:var(--red);color:white}
+    .field{margin-bottom:12px}.field label{display:block;color:var(--muted);font-size:12px;margin-bottom:6px}.field input{width:100%;background:var(--panel2);border:1px solid var(--line);border-radius8px;color:var(--text);padding:11px;border-radius:8px}.quick{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-bottom:14px}.quick button{border:1px solid var(--line);background:var(--panel2);color:var(--muted);border-radius6px;padding:7px;cursor:pointer}.order-btn{width:100%;border:0;border-radius:8px;padding:12px;color:white;font-weight:800;cursor:pointer}.order-btn.buy{background:var(--green)}.order-btn.sell{background:var(--red)}
+    .warning{margin-top:16px;padding:11px;border:1px solid #5a4a21;background:#332916;border-radius:8px;color:#d9c493;font-size:12px;line-height:1.45}.balance{margin-top:18px}.balance-row{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--line);font-size:13px}.balance-row span:first-child{color:var(--muted)}
+    .bottom{border-top:1px solid var(--line);height:190px;padding:14px 20px}.bottom h3{margin:0 0 8px;font-size:13px;color:var(--muted);text-transform:uppercase}.positions{display:flex;gap:10px;overflow:auto}.position,.history-item{min-width:180px;background:var(--panel2);border:1px solid var(--line);border-radius8px;padding10px;font-size12px}.history-item{min-width:210px}.position b,.history-item b{display:block;margin-bottom5px}.muted{color:var(--muted)}
+    .reset{position:absolute;left:18px;bottom:18px;border:1px solid var(--line);background:var(--panel2);color:var(--muted);border-radius:7px;padding8px 10px;cursor:pointer}.sidebar{position:relative}
+    @media(max-width:900px){.app{grid-template-columns:150px 1fr}.trade-panel{grid-column:1/-1;border-left:0;border-top:1px solid var(--line)}.chart-wrap{height:360px}.stats{grid-template-columns:repeat(3,1fr)}}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="logo">Demo<span>Trade</span><span class="demo-badge">DEMO</span></div>
+      <div id="markets"></div>
+      <button class="reset" id="reset">Сбросить счёт</button>
+    </aside>
+    <main>
+      <header class="topbar"><div><span class="pair" id="pairName">BTC/USDT</span><span class="pair-price" id="pairPrice">—</span></div><span id="marketStatus" class="muted">Симуляция запущена</span></header>
+      <div class="chart-wrap"><canvas id="chart"></canvas></div>
+      <div class="stats"><div class="stat"><label>Виртуальный капитал</label><b id="equity">$10,000.00</b></div><div class="stat"><label>Свободные USDT</label><b id="cash">$10,000.00</b></div><div class="stat"><label>Нереализованный P/L</label><b id="pnl">$0.00</b></div></div>
+      <section class="bottom"><h3>Открытые позиции</h3><div class="positions" id="positions"></div></section>
+      <section class="bottom"><h3>История сделок</h3><div class="positions" id="history"></div></section>
+    </main>
+    <aside class="trade-panel">
+      <div class="tabs"><button id="buyTab" class="active buy">Купить</button><button id="sellTab" class="">Продать</button></div>
+      <div class="field"><label>Тип ордера</label><select id="orderType" style="width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:8px;color:var(--text);padding:11px"><option value="market">Рыночный</option><option value="limit">Лимитный</option></select></div>
+      <div class="field" id="priceField" style="display:none"><label>Цена</label><input id="price" type="number" step="0.01" /></div>
+      <div class="field"><label>Количество</label><input id="qty" type="number" step="0.001" value="0.01" /></div>
+      <div class="quick"><button data-pct="0.25">25%</button><button data-pct="0.5">50%</button><button data-pct="0.75">75%</button><button data-pct="1">100%</button></div>
+      <button class="order-btn buy" id="submit">Купить</button>
+      <div class="warning"><b>Учебная среда.</b><br>Все средства виртуальные. Цены и сделки не связаны с реальной биржей.</div>
+      <div class="balance"><div class="balance-row"><span>Активы</span><b id="assetsValue">—</b></div></div>
+    </aside>
+  </div>
+<script>
+const MARKETS=[
+ {symbol:'BTC/USDT',base:'BTC',price:67432,volatility:.0012},
+ {symbol:'ETH/USDT',base:'ETH',price:3456,volatility:.0015},
+ {symbol:'SOL/USDT',base:'SOL',price:148.25,volatility:.002}
+];
+let state={market:0,cash:10000,positions:{},orders:[],history:[],candles:[]};
+const saved=localStorage.getItem('demo-trade-state');
+if(saved){try{state=JSON.parse(saved)}catch(e){}}
+function market(){return MARKETS[state.market]}
+function fmt(n){return '$'+n.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}
+function save(){localStorage.setItem('demo-trade-state',JSON.stringify(state))}
+function initCandles(){if(state.candles.length) return;let p=67432;for(let i=0;i<90;i++){const o=p;p=o+(Math.random()-.48)*o*.0035;const h=Math.max(o,p)*(1+Math.random()*.002);const l=Math.min(o,p)*(1-Math.random()*.002);state.candles.push({open:o,close:p,high:h,low:l})}}
+initCandles();
+function renderMarkets(){const el=document.getElementById('markets');el.innerHTML=MARKETS.map((m,i)=>{const pos=state.positions[m.base];const change=((m.price-MARKETS[i].price)/MARKETS[i].price)*100;return `<button class="market ${state.market===i?'active':''}" data-i="${i}"><div><b>${m.base}</b><small>${m.symbol}</small></div><div class="${change>=0?'up':'down'}">${m.price.toLocaleString(undefined,{minimumFractionDigits:2})}</div></button>`}).join('');el.querySelectorAll('.market').forEach(b=>b.onclick=()=>{state.market=+b.dataset.i;document.getElementById('price').value=market().price.toFixed(2);render()})}
+let side='buy';
+document.getElementById('buyTab').onclick=()=>setSide('buy');document.getElementById('sellTab').onclick=()=>setSide('sell');
+function setSide(s){side=s;document.querySelectorAll('.tabs button').forEach(b=>b.classList.remove('active','buy','sell'));const b=document.getElementById(s+'Tab');b.classList.add('active',s);document.getElementById('submit').className='order-btn '+s;document.getElementById('submit').textContent=(s==='buy'?'Купить ':'Продать ')+market().base}
+document.getElementById('orderType').onchange=e=>{document.getElementById('priceField').style.display=e.target.value==='limit'?'block':'none'};
+function assetValue(){let v=0;for(const [base,position] of Object.entries(state.positions)){const m=MARKETS.find(x=>x.base===base);if(m)v+=position.qty*m.price}return v}
+function pnl(){let v=0;for(const [base,p] of Object.entries(state.positions)){const m=MARKETS.find(x=>x.base===base);if(m)v+=(m.price-p.avg)*p.qty}return v}
+document.querySelectorAll('.quick button').forEach(b=>b.onclick=()=>{const pct=+b.dataset.pct;if(side==='buy'){const price=+document.getElementById('price').value||market().price;document.getElementById('qty').value=(state.cash*pct/price).toFixed(6)}else{const q=state.positions[market().base]?.qty||0;document.getElementById('qty').value=(q*pct).toFixed(6)}});
+document.getElementById('submit').onclick=()=>{const m=market();const qty=+document.getElementById('qty').value;const type=document.getElementById('orderType').value;const limit=+document.getElementById('price').value;if(!(qty>0)||!isFinite(qty)||(type==='limit'&&!(limit>0)))return alert('Введите корректное количество и цену');
+ if(type==='limit'&&((side==='buy'&&limit>m.price)||(side==='sell'&&limit<m.price))){state.orders.push({id:Date.now(),base:m.base,side,qty,price:limit});save();render();return}
+ execute(side,qty,type==='limit'?limit:m.price,m.base);
+};
+function execute(side,qty,price,base){const m=MARKETS.find(x=>x.base===base);if(!m)return;if(side==='buy'){const cost=qty*price;if(cost>state.cash)return alert('Недостаточно виртуального USDT');state.cash-=cost;const p=state.positions[base]||{qty:0,avg:0};p.avg=(p.qty*p.avg+qty*price)/(p.qty+qty);p.qty+=qty;state.positions[base]=p}else{const p=state.positions[base];if(!p||p.qty<qty)return alert('Недостаточно актива');p.qty-=qty;if(p.qty<1e-8)delete state.positions[base];state.cash+=qty*price}state.history.unshift({time:new Date().toLocaleTimeString(),side,qty,price,base});state.history=state.history.slice(20);save();render()}
+function render(){const m=market();document.getElementById('pairName').textContent=m.symbol;document.getElementById('pairPrice').textContent='$'+m.price.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});document.getElementById('cash').textContent=fmt(state.cash);const av=assetValue(),equity=state.cash+av;document.getElementById('assetsValue').textContent=fmt(av);document.getElementById('equity').textContent=fmt(equity);const pl=pnl();const e=document.getElementById('pnl');e.textContent=(pl>=0?'+$':'- $')+Math.abs(pl).toFixed(2);e.className=pl>=0?'up':'down';document.getElementById('price').value=m.price.toFixed(2);setSide(side);renderMarkets();renderPositions();renderHistory();drawChart()}
+function renderPositions(){const el=document.getElementById('positions');const entries=Object.entries(state.positions);el.innerHTML=entries.length?entries.map(([base,p])=>{const m=MARKETS.find(x=>x.base===base);const pl=(m.price-p.avg)*p.qty;return `<div class="position"><b>${base}</b><div>${p.qty.toFixed(6)} шт.</div><div class="muted">Средняя: ${fmt(p.avg)}</div><div class="${pl>=0?'up':'down'}">P/L: ${fmt(pl)}</div></div>`}).join(''):'<span class="muted">Пока нет открытых позиций</span>'}
+function renderHistory(){const el=document.getElementById('history');el.innerHTML=state.history.length?state.history.map(h=>`<div class="history-item"><b class="${h.side==='buy'?'up':'down'}">${h.side==='buy'?'ПОКУПКА':'ПРОДАЖА'} ${h.base}</b><div>${h.qty.toFixed(6)} × ${fmt(h.price)}</div><div class="muted">${h.time}</div></div>`).join(''):'<span class="muted">Сделок ещё нет</span>'}
+const canvas=document.getElementById('chart'),ctx=canvas.getContext('2d');
+function drawChart(){const dpr=devicePixelRatio||1,r=canvas.getBoundingClientRect();canvas.width=r.width*dpr;canvas.height=r.height*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,r.width,r.height);const c=state.candles;if(!c.length)return;const w=r.width,h=r.height,pad=8,cw=(w-pad*2)/c.length;const highs=c.map(x=>x.high),lows=c.map(x=>x.low),max=Math.max(...highs),min=Math.min(...lows),range=max-min||1;ctx.strokeStyle='#26374f';ctx.lineWidth=1;for(let i=0;i<5;i++){const y=pad+i*(h-pad*2)/4;ctx.beginPath();ctx.moveTo(pad,y);ctx.lineTo(w-pad,y);ctx.stroke()}ctx.textAlign='right';ctx.fillStyle='#91a2b8';ctx.font='11px ui-monospace';for(let i=0;i<5;i++){const y=pad+i*(h-pad*2)/4,price=max-i*range/4;ctx.fillText(price.toLocaleString(undefined,{maximumFractionDigits:2}),w-4,y-3)}c.forEach((x,i)=>{const x0=pad+i*cw,y=yv=x=>pad+(max-x)/range*(h-pad*2);const up=x.close>=x.open;ctx.strokeStyle=up?'#22c55e':'#ef4444';ctx.fillStyle=up?'#22c55e':'#ef4444';ctx.beginPath();ctx.moveTo(x0+cw/2,y(x.high));ctx.lineTo(x0+cw/2,y(x.low));ctx.stroke();const top=y(Math.max(x.open,x.close)),bottom=y(Math.min(x.open,x.close));ctx.fillRect(x0+cw*.2,top,Math.max(2,cw*.6),Math.max(2,bottom-top)})}
+setInterval(()=>{const m=MARKETS[state.market];MARKETS.forEach(x=>{const move=(Math.random()-.495)*x.volatility;x.price=Math.max(.01,x.price*(1+move));});const active=MARKETS[state.market];const last=state.candles.at(-1);const base=last?last.close:active.price;const open=base,close=active.price,high=Math.max(open,close)*(1+Math.random()*.001),low=Math.min(open,close)*(1-Math.random()*.001);state.candles.push({open,close,high,low});if(state.candles.length>90)state.candles.shift();for(const o of [...state.orders]){const activePos=MARKETS.find(x=>x.base===o.base);if(!activePos)continue;if((o.side==='buy'&&o.price>=activePos.price)||(o.side==='sell'&&o.price<=activePos.price)){execute(o.side,o.qty,o.price,o.base);state.orders=state.orders.filter(x=>x.id!==o.id)}}save();render()},2500);
+document.getElementById('reset').onclick=()=>{if(!confirm('Сбросить весь учебный счёт?'))return;state={market:state.market,cash:10000,positions:{},orders:[],history:[],candles:[]};MARKETS.forEach((m,i)=>{m.price=[67432,3456,148.25][i]});save();initCandles();render()};
+window.addEventListener('resize',drawChart);render();
+</script>
+</body>
+</html>
